@@ -24,9 +24,13 @@ Go-версия [sufler-live](../sufler-live): ИИ-суфлёр в реальн
 ## Сборка
 
 ```bash
-make build   # bin/sufler (фаза 0 — без cgo, статический)
+make build   # bin/sufler (cgo: onnxruntime подгружается из lib/ в рантайме)
 make check   # самопроверка конфига и БД
 ```
+
+Требуются `lib/`/`models/` рядом с местом запуска: `lib/onnxruntime.so`
+(сборка onnxruntime ≥ 1.29), `models/silero_*.onnx` (уже в репе).
+Путь можно переопределить: `SUFLER_ONNXRUNTIME_LIB`, `SUFLER_MODELS`.
 
 ## Конфигурация
 

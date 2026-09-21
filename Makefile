@@ -5,7 +5,7 @@ GOFLAGS := -trimpath -ldflags "-s -w -X main.version=$(VERSION)"
 .PHONY: build check clean
 
 build:
-	CGO_ENABLED=0 go build $(GOFLAGS) -o $(BINARY) ./cmd/sufler
+	go build $(GOFLAGS) -o $(BINARY) ./cmd/sufler
 
 check: build
 	./$(BINARY) --check
