@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -88,9 +89,17 @@ func now() float64 { return float64(time.Now().UnixNano()) / 1e9 }
 
 func New(cfg *config.LLM, systemPrompt string) *Analyzer {
 	return &Analyzer{
-		Cfg:           cfg,
-		SystemPrompt:  systemPrompt,
-		client:        &http.Client{Timeout: time.Duration(cfg.TimeoutS * float64(time.Second))},
+		Cfg:          cfg,
+		SystemPrompt: systemPrompt,
+		client: &http.Client{
+			Timeout: time.Duration(cfg.TimeoutS * float64(time.Second)),
+			Transport: &http.Transport{
+				ForceAttemptHTTP2: false,
+				TLSClientConfig: &tls.Config{
+					NextProtos: []string{"http/1.1"},
+				},
+			},
+		},
 		q:             make(chan cmd, 256),
 		stop:          make(chan struct{}),
 		done:          make(chan struct{}),

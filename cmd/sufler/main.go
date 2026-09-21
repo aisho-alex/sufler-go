@@ -12,6 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gotk3/gotk3/glib"
+	"github.com/gotk3/gotk3/gtk"
+
 	"sufler-go/internal/analyzer"
 	"sufler-go/internal/asr"
 	"sufler-go/internal/bus"
@@ -19,8 +22,14 @@ import (
 	"sufler-go/internal/config"
 	"sufler-go/internal/db"
 	"sufler-go/internal/logutil"
+	"sufler-go/internal/ui"
 	"sufler-go/internal/vad"
 )
+
+func strAny(v any) string {
+	s, _ := v.(string)
+	return s
+}
 
 var version = "dev"
 
@@ -72,8 +81,62 @@ func main() {
 		runConsole(app)
 		return
 	}
-	fmt.Println("суфлёр: оверлей появится в фазе 6, запускаю консольный режим")
-	runConsole(app)
+	runUI(app)
+}
+
+func runUI(app *App) {
+	gtk.Init(nil)
+
+	overlay, err := ui.NewOverlay(app.cfg,
+		func(on bool) {
+			if on {
+				app.startStreams()
+			} else {
+				app.stopStreams()
+			}
+		},
+		app.shutdown,
+		app.userNote,
+		app.userQuestion,
+	)
+	if err != nil {
+		app.shutdown()
+		fatal(fmt.Errorf("ui: %w", err))
+	}
+
+	app.bus.Subscribe(func(e bus.Event) {
+		glib.IdleAdd(func() {
+			switch e.Type {
+			case "transcript":
+				overlay.AddTranscript(strAny(e.Data["source"]),
+					strAny(e.Data["text"]))
+			case "hint":
+				overlay.AddHint(e.Data)
+			case "answer":
+				overlay.AddAnswer(strAny(e.Data["question"]),
+					strAny(e.Data["answer"]))
+			case "status":
+				overlay.SetStatus(strAny(e.Data["text"]))
+			}
+		})
+	})
+
+	app.logFn = func(msg string) {
+		app.flog.Log(msg)
+		text := msg
+		if i := strings.IndexByte(text, ' '); i < len(text)-1 &&
+			text[0] >= '2' && text[0] <= '9' {
+			text = text[i+1:]
+		}
+		glib.IdleAdd(func() { overlay.SetStatus(text) })
+	}
+
+	if err := app.startWorkers(); err != nil {
+		app.shutdown()
+		fatal(err)
+	}
+	overlay.Toggle()
+	gtk.Main()
 }
 
 type unit struct {
@@ -96,6 +159,7 @@ type App struct {
 	noMic, noMonitor bool
 	closed           bool
 	mu               sync.Mutex
+	logFn            func(string)
 }
 
 func NewApp(cfg *config.Config, noMic, noMonitor bool, note string) (*App, error) {
@@ -127,10 +191,11 @@ func NewApp(cfg *config.Config, noMic, noMonitor bool, note string) (*App, error
 		sessionID: sessionID,
 		noMic:     noMic,
 		noMonitor: noMonitor,
+		logFn:     flog.Log,
 	}, nil
 }
 
-func (a *App) log(msg string) { a.flog.Log(msg) }
+func (a *App) log(msg string) { a.logFn(msg) }
 
 func (a *App) startWorkers() error {
 	model, err := vad.NewModel(vad.ModelsDir())

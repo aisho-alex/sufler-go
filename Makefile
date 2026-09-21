@@ -3,7 +3,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 BUILD_FLAGS := -trimpath -ldflags "-s -w -X main.version=$(VERSION)"
 WHISPER_DIR := third_party/whisper.cpp
 export CGO_CFLAGS = -I$(CURDIR)/$(WHISPER_DIR)/include -I$(CURDIR)/$(WHISPER_DIR)/ggml/include
-export CGO_LDFLAGS = -L$(CURDIR)/lib -lggml-cuda -lcublas -lcublasLt -lcudart -lcuda
+export CGO_LDFLAGS = -L$(CURDIR)/lib
 
 .PHONY: build check test whisper-build model clean
 
@@ -37,3 +37,13 @@ model:
 
 clean:
 	rm -rf bin
+
+whisper-merge:
+	rm -rf /tmp/opencode/ar-merge && mkdir -p /tmp/opencode/ar-merge
+	printf 'CREATE /tmp/opencode/ar-merge/libwhisper.a\nADDLIB $(CURDIR)/lib/libwhisper.a\nADDLIB $(CURDIR)/lib/libggml.a\nADDLIB $(CURDIR)/lib/libggml-base.a\nADDLIB $(CURDIR)/lib/libggml-cpu.a\nADDLIB $(CURDIR)/lib/libggml-cuda.a\nSAVE\nEND\n' | ar -M
+	mv /tmp/opencode/ar-merge/libwhisper.a lib/libwhisper.a
+	ar rc lib/libggml.a
+	ar rc lib/libggml-base.a
+	ar rc lib/libggml-cpu.a
+	ar rc lib/libggml-cuda.a
+	ranlib lib/libwhisper.a lib/libggml.a lib/libggml-base.a lib/libggml-cpu.a lib/libggml-cuda.a
