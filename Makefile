@@ -2,8 +2,8 @@ BINARY := bin/sufler
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 BUILD_FLAGS := -trimpath -ldflags "-s -w -X main.version=$(VERSION)"
 WHISPER_DIR := third_party/whisper.cpp
-export CGO_CFLAGS = -I$(WHISPER_DIR)/include -I$(WHISPER_DIR)/ggml/include
-export CGO_LDFLAGS = -Llib -lggml-cuda -lcublas -lcublasLt -lcudart -lcuda
+export CGO_CFLAGS = -I$(CURDIR)/$(WHISPER_DIR)/include -I$(CURDIR)/$(WHISPER_DIR)/ggml/include
+export CGO_LDFLAGS = -L$(CURDIR)/lib -lggml-cuda -lcublas -lcublasLt -lcudart -lcuda
 
 .PHONY: build check test whisper-build model clean
 
