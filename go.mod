@@ -3,6 +3,7 @@ module sufler-go
 go 1.25.0
 
 require (
+	github.com/ggerganov/whisper.cpp/bindings/go v0.0.0-00010101000000-000000000000
 	github.com/joho/godotenv v1.5.1
 	github.com/yalue/onnxruntime_go v1.36.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -20,3 +21,5 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
+
+replace github.com/ggerganov/whisper.cpp/bindings/go => ./third_party/whisper.cpp/bindings/go

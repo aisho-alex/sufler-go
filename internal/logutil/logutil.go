@@ -27,9 +27,9 @@ func NewFileLog(path string, echo bool) (*FileLog, error) {
 	return &FileLog{f: f, echo: echo}, nil
 }
 
-func (l *FileLog) Log(msg string)             { l.write(msg, true, l.echo) }
-func (l *FileLog) LogSilent(msg string)       { l.write(msg, true, false) }
-func (l *FileLog) Logf(f string, a ...any)    { l.Log(fmt.Sprintf(f, a...)) }
+func (l *FileLog) Log(msg string)          { l.write(msg, true, l.echo) }
+func (l *FileLog) LogSilent(msg string)    { l.write(msg, true, false) }
+func (l *FileLog) Logf(f string, a ...any) { l.Log(fmt.Sprintf(f, a...)) }
 func (l *FileLog) LogSilentf(f string, a ...any) {
 	l.LogSilent(fmt.Sprintf(f, a...))
 }

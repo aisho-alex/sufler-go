@@ -2,3 +2,5 @@
 /lib/
 /data/
 .env
+models/ggml-*.bin
+third_party/whisper.cpp/build/

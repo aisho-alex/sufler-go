@@ -17,11 +17,11 @@ type Segmenter struct {
 	onSegment func(seg []float32, tsStart, tsEnd float64)
 	Log       func(string)
 
-	rest     []float32
-	buf      []float32
-	tail     []float32
-	tailMax  int
-	inSpeech bool
+	rest      []float32
+	buf       []float32
+	tail      []float32
+	tailMax   int
+	inSpeech  bool
 	speechMs  float64
 	silenceMs float64
 }
