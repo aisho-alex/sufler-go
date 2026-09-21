@@ -28,6 +28,7 @@ whisper-build:
 	cp $(WHISPER_DIR)/build/ggml/src/libggml-base.a lib/
 	cp $(WHISPER_DIR)/build/ggml/src/libggml-cpu.a lib/
 	cp $(WHISPER_DIR)/build/ggml/src/ggml-cuda/libggml-cuda.a lib/
+	$(MAKE) whisper-merge
 
 model:
 	mkdir -p models
