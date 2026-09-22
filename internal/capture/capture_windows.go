@@ -5,6 +5,7 @@ package capture
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -176,6 +177,25 @@ func wasapiDeviceNames() []string {
 	return out
 }
 
+func ListDevices() string {
+	var b strings.Builder
+	b.WriteString("=== WASAPI ===\n")
+	names := wasapiDeviceNames()
+	if len(names) == 0 {
+		b.WriteString("  (устройства не найдены)\n")
+	} else {
+		b.WriteString(strings.Join(names, "\n"))
+		b.WriteString("\n")
+	}
+	if id, err := defaultEndpointID("mic"); err == nil {
+		fmt.Fprintf(&b, "default mic:    %s\n", id)
+	}
+	if id, err := defaultEndpointID("monitor"); err == nil {
+		fmt.Fprintf(&b, "default system: %s\n", id)
+	}
+	return b.String()
+}
+
 func (s *wasapiSource) run(stopCh chan struct{}, onAudio OnAudioFunc) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -304,7 +324,7 @@ func (s *wasapiSource) run(stopCh chan struct{}, onAudio OnAudioFunc) {
 			lim := int(frames) * int(wfx.NBlockAlign)
 			raw := make([]byte, lim)
 			if devFlags&flagSilent == 0 && data != nil {
-				copy(raw, unsafe.Slice((*byte)(unsafe.Pointer(data)), lim))
+				copy(raw, unsafe.Slice(data, lim))
 			}
 			if err := acc.ReleaseBuffer(frames); err != nil {
 				return
