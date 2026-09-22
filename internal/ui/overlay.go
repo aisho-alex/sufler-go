@@ -222,14 +222,7 @@ func NewOverlay(cfg *config.Config, onToggle func(bool), onQuit func(),
 	o.renderHints()
 	win.ShowAll()
 	o.reposition()
-	o.logWindowPos()
 	return o, nil
-}
-
-func (o *Overlay) logWindowPos() {
-	x, y := o.win.GetPosition()
-	w, h := o.win.GetSize()
-	fmt.Printf("overlay: позиция %d,%d %dx%d\n", x, y, w, h)
 }
 
 func newBtn(label string, width int, tooltip string) *gtk.Button {
@@ -332,7 +325,6 @@ func (o *Overlay) togglePill() {
 		o.win.Resize(o.cfg.UI.Width, o.cfg.UI.Height)
 	}
 	o.reposition()
-	o.logWindowPos()
 }
 
 func (o *Overlay) quit() {

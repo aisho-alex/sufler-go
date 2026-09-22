@@ -150,7 +150,9 @@ func (a *ASR) process(j job) {
 	}()
 	t0 := time.Now()
 	var text string
-	abort := func() bool { return a.stopping.Load() }
+	// encoder_begin_callback: false прерывает инференс, поэтому продолжаем
+	// (true), пока не запрошена остановка.
+	abort := func() bool { return !a.stopping.Load() }
 	err := a.ctx.Process(j.seg, abort, nil, nil)
 	if err != nil {
 		if a.stopping.Load() {
