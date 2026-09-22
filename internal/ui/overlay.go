@@ -210,8 +210,10 @@ func NewOverlay(cfg *config.Config, onToggle func(bool), onQuit func(),
 		return true
 	})
 	win.Connect("button-press-event", o.onPress)
+	win.Connect("button-release-event", o.onRelease)
 	win.Connect("motion-notify-event", o.onMotion)
-	win.AddEvents(int(gdk.BUTTON_PRESS_MASK) | int(gdk.POINTER_MOTION_MASK))
+	win.AddEvents(int(gdk.BUTTON_PRESS_MASK) | int(gdk.BUTTON_RELEASE_MASK) |
+		int(gdk.POINTER_MOTION_MASK))
 
 	o.renderHints()
 	win.ShowAll()
@@ -248,11 +250,23 @@ func (o *Overlay) onPress(_ *gtk.Window, ev *gdk.Event) bool {
 	return true
 }
 
+func (o *Overlay) onRelease(_ *gtk.Window, ev *gdk.Event) bool {
+	bev := gdk.EventButtonNewFromEvent(ev)
+	if bev.Button() == 1 {
+		o.dragging = false
+	}
+	return false
+}
+
 func (o *Overlay) onMotion(_ *gtk.Window, ev *gdk.Event) bool {
 	if !o.dragging {
 		return false
 	}
 	mev := gdk.EventMotionNewFromEvent(ev)
+	if mev.State()&gdk.BUTTON1_MASK == 0 {
+		o.dragging = false
+		return false
+	}
 	x, y := mev.MotionValRoot()
 	o.win.Move(int(x)-o.dragOffX, int(y)-o.dragOffY)
 	return true
