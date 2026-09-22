@@ -38,16 +38,23 @@ jobs:
             -DGGML_CUDA=OFF \
             -DGGML_NATIVE=OFF \
             -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON \
+            -DGGML_OPENMP=OFF \
             -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=OFF \
             -DCMAKE_BUILD_TYPE=Release
           cmake --build third_party/whisper.cpp/build
           echo "=== расположение архивов ==="
           find third_party/whisper.cpp/build -name '*.a' -o -name '*.lib' | sort
           mkdir -p lib
-          for a in src/libwhisper.a ggml/src/libggml.a ggml/src/libggml-base.a ggml/src/libggml-cpu.a; do
-            cp -v "third_party/whisper.cpp/build/$a" lib/ || echo "НЕ НАЙДЕН: $a"
-          done
-          test -f lib/libwhisper.a && test -f lib/libggml.a && test -f lib/libggml-base.a && test -f lib/libggml-cpu.a
+          cp -v third_party/whisper.cpp/build/src/libwhisper.a lib/
+          copylib() {
+            local d=third_party/whisper.cpp/build/ggml/src
+            if [ -f "$d/lib$1.a" ]; then cp -v "$d/lib$1.a" "lib/lib$1.a"
+            elif [ -f "$d/$1.a" ]; then cp -v "$d/$1.a" "lib/lib$1.a"
+            else echo "НЕ НАЙДЕН: $1"; exit 1; fi
+          }
+          copylib ggml
+          copylib ggml-base
+          copylib ggml-cpu
 
       - name: Merge static libs + CUDA stubs (cgo LDFLAGS требует имена)
         run: |
