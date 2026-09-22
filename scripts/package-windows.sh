@@ -12,6 +12,10 @@ mkdir -p "$DIST/bin" "$DIST/lib" "$DIST/models"
 cp "$WS/bin/sufler.exe" "$DIST/bin/"
 cp "$LIB/onnxruntime.dll" "$DIST/lib/"
 cp "$WS/models/silero_encoder_v5.onnx" "$WS/models/silero_decoder_v5.onnx" "$DIST/models/"
+cp -r "$WS/prompts" "$DIST/prompts"
+
+# config.yaml как в репе, но модель под CPU — small (первое вхождение "  model:")
+sed '0,/^  model: /s//  model: small              /' "$WS/config.yaml" > "$DIST/config.yaml"
 
 # Рекурсивно собираем mingw-DLL-зависимости через objdump.
 collect() {
@@ -58,6 +62,8 @@ sufler — ИИ-суфлёр (Windows, CPU)
 Модель побольше (large-v3-turbo, ~1.6 ГБ, медленнее на CPU):
   powershell -File download-model.ps1 -Model large-v3-turbo
 EOF
+
+sed -i 's/Модель побольше (large-v3-turbo, ~1.6 ГБ, медленнее на CPU):/Модель побольше (больше, но медленнее на CPU — правьте config.yaml asr.model):/' "$DIST/README-WINDOWS.txt"
 
 cat > "$DIST/bin/download-model.ps1" <<'EOF'
 param([string]$Model = "small")

@@ -78,6 +78,29 @@ onnxruntime подгружается через dlopen. В `third_party/whisper.
 Оверлей: перетаскивается мышью, ▯ сворачивает в пилюлю, ✕ — выход.
 Строка ввода: Enter — вопрос LLM, Ctrl+Enter — заметка.
 
+## Windows (CPU, без CUDA)
+
+Собирается в GitHub Actions (`.github/workflows/windows-build.yml`, msys2):
+whisper.cpp CPU static + GTK3 + onnxruntime, упаковывается в
+`sufler-windows.zip` (артефакт каждого прогона; на тег — release).
+
+```text
+1. Скачать sufler-windows.zip из Actions (или из Releases)
+2. Распаковать; в bin\ создайте .env:  NEURALDEEP_API_KEY=<ключ>
+3. powershell -File bin\download-model.ps1        # ggml-small.bin (~466 МБ)
+4. bin\sufler.exe                                  # оверлей (▶ — старт)
+   bin\sufler.exe --no-ui --list-devices           # консоль/устройства
+```
+
+- Захват — WASAPI: микрофон с дефолтного capture-устройства, системный звук —
+  loopback с дефолтного render-устройства (смена устройства подхватывается
+  раз в 10 с). WASAPI сам конвертит mix format в 48кГц моно, дальше 16кГц.
+- Модель по умолчанию — `small` (`config.yaml`→`asr.model`); на CPU `small`
+  даёт RTF ≈ 0.1–0.3, `large-v3-turbo` — ≈ 0.5 и больше.
+- Требуется CPU с AVX2/FMA/F16C (Intel Haswell 2013+ / AMD Excavator+).
+- GTK3-рантайм и onnxruntime.dll идут в комплекте (папки `lib/`, `share/`,
+  `etc/`); интернет нужен только для модели и LLM.
+
 ## Отличия от Python-версии
 
 - Захват — только через ffmpeg-pulse (PortAudio/sounddevice не портирован;
@@ -91,4 +114,5 @@ onnxruntime подгружается через dlopen. В `third_party/whisper.
 
 - Бинарь ~215 МБ: вшиты CUDA-кубины под sm_89 (RTX 40xx). Другая карта —
   пересборка `make whisper-build` с нужным `CMAKE_CUDA_ARCHITECTURES`.
+- Windows-сборка — CPU-only; заметно медленнее CUDA-версии (см. выше).
 - При выводе звука в колонки микрофон ловит эхо — используйте наушники.
