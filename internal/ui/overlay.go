@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/gotk3/gotk3/gdk"
@@ -89,9 +90,10 @@ type Overlay struct {
 
 	running, pill bool
 	hints         []hintItem
-	dragOffX      int
-	dragOffY      int
-	dragging      bool
+}
+
+func envOn(name string) bool {
+	return os.Getenv(name) == "1"
 }
 
 func NewOverlay(cfg *config.Config, onToggle func(bool), onQuit func(),
@@ -120,8 +122,10 @@ func NewOverlay(cfg *config.Config, onToggle func(bool), onQuit func(),
 	win.SetName("root")
 
 	screen := win.GetScreen()
-	if visual, err := screen.GetRGBAVisual(); err == nil && visual != nil {
-		win.SetVisual(visual)
+	if !envOn("SUFLER_NO_RGBA") {
+		if visual, err := screen.GetRGBAVisual(); err == nil && visual != nil {
+			win.SetVisual(visual)
+		}
 	}
 
 	provider, err := gtk.CssProviderNew()
@@ -210,16 +214,21 @@ func NewOverlay(cfg *config.Config, onToggle func(bool), onQuit func(),
 		o.quit()
 		return true
 	})
-	win.Connect("button-press-event", o.onPress)
-	win.Connect("button-release-event", o.onRelease)
-	win.Connect("motion-notify-event", o.onMotion)
-	win.AddEvents(int(gdk.BUTTON_PRESS_MASK) | int(gdk.BUTTON_RELEASE_MASK) |
-		int(gdk.POINTER_MOTION_MASK))
+	if !envOn("SUFLER_NO_DRAG") {
+		win.Connect("button-press-event", o.onDragStart)
+	}
 
 	o.renderHints()
 	win.ShowAll()
 	o.reposition()
+	o.logWindowPos()
 	return o, nil
+}
+
+func (o *Overlay) logWindowPos() {
+	x, y := o.win.GetPosition()
+	w, h := o.win.GetSize()
+	fmt.Printf("overlay: позиция %d,%d %dx%d\n", x, y, w, h)
 }
 
 func newBtn(label string, width int, tooltip string) *gtk.Button {
@@ -239,37 +248,29 @@ func escaped(s string) string {
 	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(s)
 }
 
-func (o *Overlay) onPress(_ *gtk.Window, ev *gdk.Event) bool {
-	bev := gdk.EventButtonNewFromEvent(ev)
-	if bev.Button() != 1 {
+// onDragStart запускает нативное перетаскивание окна силами window manager
+// (gtk_window_begin_move_drag). Координаты указателя берём из текущего
+// состояния устройства-указателя, а не из события: обёртки
+// gdk.EventButtonNewFromEvent на Windows вызывали зависание UI.
+func (o *Overlay) onDragStart(_ *gtk.Window, _ *gdk.Event) bool {
+	display, err := gdk.DisplayGetDefault()
+	if err != nil {
 		return false
 	}
-	x, y := o.win.GetPosition()
-	o.dragOffX = int(bev.XRoot()) - x
-	o.dragOffY = int(bev.YRoot()) - y
-	o.dragging = true
-	return true
-}
-
-func (o *Overlay) onRelease(_ *gtk.Window, ev *gdk.Event) bool {
-	bev := gdk.EventButtonNewFromEvent(ev)
-	if bev.Button() == 1 {
-		o.dragging = false
-	}
-	return false
-}
-
-func (o *Overlay) onMotion(_ *gtk.Window, ev *gdk.Event) bool {
-	if !o.dragging {
+	seat, err := display.GetDefaultSeat()
+	if err != nil {
 		return false
 	}
-	mev := gdk.EventMotionNewFromEvent(ev)
-	if mev.State()&gdk.BUTTON1_MASK == 0 {
-		o.dragging = false
+	dev, err := seat.GetPointer()
+	if err != nil {
 		return false
 	}
-	x, y := mev.MotionValRoot()
-	o.win.Move(int(x)-o.dragOffX, int(y)-o.dragOffY)
+	var screen *gdk.Screen
+	var x, y int
+	if err := dev.GetPosition(&screen, &x, &y); err != nil {
+		return false
+	}
+	o.win.BeginMoveDrag(gdk.BUTTON_PRIMARY, x, y, 0)
 	return true
 }
 
@@ -319,6 +320,7 @@ func (o *Overlay) togglePill() {
 		o.win.Resize(o.cfg.UI.Width, o.cfg.UI.Height)
 	}
 	o.reposition()
+	o.logWindowPos()
 }
 
 func (o *Overlay) quit() {
