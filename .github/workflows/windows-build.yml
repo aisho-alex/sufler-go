@@ -1,0 +1,103 @@
+name: windows-build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            git
+            make
+            zip
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-go
+            mingw-w64-x86_64-gtk3
+            mingw-w64-x86_64-pkg-config
+
+      - name: Build whisper.cpp (CPU, static)
+        run: |
+          cmake -S third_party/whisper.cpp -B third_party/whisper.cpp/build -G Ninja \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DGGML_CUDA=OFF \
+            -DGGML_NATIVE=OFF \
+            -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON \
+            -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=OFF \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build third_party/whisper.cpp/build
+          cp third_party/whisper.cpp/build/src/libwhisper.a lib/
+          cp third_party/whisper.cpp/build/ggml/src/libggml.a lib/
+          cp third_party/whisper.cpp/build/ggml/src/libggml-base.a lib/
+          cp third_party/whisper.cpp/build/ggml/src/libggml-cpu.a lib/
+
+      - name: Merge static libs + CUDA stubs (cgo LDFLAGS требует имена)
+        run: |
+          rm -rf ar-tmp && mkdir ar-tmp
+          printf 'CREATE ar-tmp/libwhisper.a\nADDLIB lib/libwhisper.a\nADDLIB lib/libggml.a\nADDLIB lib/libggml-base.a\nADDLIB lib/libggml-cpu.a\nSAVE\nEND\n' | ar -M
+          mv ar-tmp/libwhisper.a lib/libwhisper.a
+          for f in libggml libggml-base libggml-cpu libggml-cuda libcublas libcublasLt libcudart libcuda; do
+            rm -f lib/$f.a && ar rc lib/$f.a
+          done
+          ranlib lib/*.a
+
+      - name: Download onnxruntime (win-x64)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/microsoft/onnxruntime/releases/download/v1.29.1/onnxruntime-win-x64-1.29.1.zip" -OutFile ort.zip
+          Expand-Archive ort.zip -DestinationPath ort-tmp
+          Copy-Item ort-tmp/onnxruntime-win-x64-1.29.1/lib/onnxruntime.dll lib/
+
+      - name: Go build
+        env:
+          CGO_ENABLED: 1
+          CC: gcc
+          CGO_CFLAGS: -I${{ github.workspace }}/third_party/whisper.cpp/include -I${{ github.workspace }}/third_party/whisper.cpp/ggml/include
+          CGO_LDFLAGS: -L${{ github.workspace }}/lib
+        run: |
+          go build -trimpath \
+            -ldflags "-s -w -X main.version=$(git describe --tags --always --dirty)" \
+            -o bin/sufler.exe ./cmd/sufler
+
+      - name: Headless tests
+        run: |
+          go test ./internal/analyzer/ ./internal/capture/ ./internal/vad/
+          ./bin/sufler.exe --version
+          ./bin/sufler.exe --check
+
+      - name: Package
+        run: bash scripts/package-windows.sh "$GITHUB_WORKSPACE"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sufler-windows
+          path: sufler-windows.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sufler-windows
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: sufler-windows.zip

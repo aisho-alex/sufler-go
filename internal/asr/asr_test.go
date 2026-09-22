@@ -33,6 +33,10 @@ func TestTranscribeBenchmark(t *testing.T) {
 		func(r Result) { done <- r },
 		func(msg string) { t.Log(msg) })
 
+	if _, err := os.Stat(a.ModelPath(vad.ModelsDir())); err != nil {
+		t.Skipf("модель whisper недоступна: %v", err)
+	}
+
 	start := time.Now()
 	if err := a.Start(vad.ModelsDir()); err != nil {
 		t.Fatal(err)
