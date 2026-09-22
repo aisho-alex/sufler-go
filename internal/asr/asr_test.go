@@ -24,7 +24,7 @@ func loadF32(t *testing.T, path string) []float32 {
 }
 
 func TestTranscribeBenchmark(t *testing.T) {
-	audio := loadF32(t, "/tmp/opencode/vad_combo.f32")
+	audio := loadF32(t, "../vad/testdata/vad_combo.f32")
 	if audio == nil {
 		return
 	}

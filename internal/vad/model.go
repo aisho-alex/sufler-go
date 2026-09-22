@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 
 	ort "github.com/yalue/onnxruntime_go"
@@ -21,10 +22,14 @@ func LibraryPath() string {
 	if p := os.Getenv("SUFLER_ONNXRUNTIME_LIB"); p != "" {
 		return p
 	}
+	name := "onnxruntime.so"
+	if runtime.GOOS == "windows" {
+		name = "onnxruntime.dll"
+	}
 	dir, err := os.Getwd()
 	if err == nil {
 		for {
-			p := filepath.Join(dir, "lib", "onnxruntime.so")
+			p := filepath.Join(dir, "lib", name)
 			if _, err := os.Stat(p); err == nil {
 				return p
 			}
@@ -35,7 +40,7 @@ func LibraryPath() string {
 			dir = parent
 		}
 	}
-	return filepath.Join("lib", "onnxruntime.so")
+	return filepath.Join("lib", name)
 }
 
 func ModelsDir() string {
