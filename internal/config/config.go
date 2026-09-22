@@ -102,22 +102,25 @@ func defaults() Config {
 }
 
 func Load(path string) (*Config, error) {
-	root, err := filepath.Abs(".")
+	cwd, err := filepath.Abs(".")
 	if err != nil {
 		return nil, err
+	}
+	root := cwd
+	cfgPath := path
+	if cfgPath != "" {
+		if !filepath.IsAbs(cfgPath) {
+			cfgPath = filepath.Join(cwd, cfgPath)
+		}
+	} else {
+		root, cfgPath = findConfig(cwd)
 	}
 	_ = godotenv.Load(filepath.Join(root, ".env"))
 
 	cfg := defaults()
 	cfg.ProjectRoot = root
 
-	p := path
-	if p == "" {
-		p = filepath.Join(root, "config.yaml")
-	} else if !filepath.IsAbs(p) {
-		p = filepath.Join(root, p)
-	}
-	if data, err := os.ReadFile(p); err == nil {
+	if data, err := os.ReadFile(cfgPath); err == nil {
 		if err := yaml.Unmarshal(data, &cfg); err != nil {
 			return nil, err
 		}
@@ -134,6 +137,21 @@ func Load(path string) (*Config, error) {
 	cfg.DB.Path = resolve(root, cfg.DB.Path)
 	cfg.LogPath = resolve(root, cfg.LogPath)
 	return &cfg, nil
+}
+
+func findConfig(cwd string) (root, cfgPath string) {
+	candidates := []string{cwd}
+	if exe, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		candidates = append(candidates, filepath.Dir(exeDir), exeDir)
+	}
+	for _, dir := range candidates {
+		p := filepath.Join(dir, "config.yaml")
+		if _, err := os.Stat(p); err == nil {
+			return dir, p
+		}
+	}
+	return cwd, filepath.Join(cwd, "config.yaml")
 }
 
 func (c *Config) Prompt() (string, error) {

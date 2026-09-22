@@ -26,6 +26,12 @@ func LibraryPath() string {
 	if runtime.GOOS == "windows" {
 		name = "onnxruntime.dll"
 	}
+	if exe, err := os.Executable(); err == nil {
+		p := filepath.Join(filepath.Dir(exe), name)
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
 	dir, err := os.Getwd()
 	if err == nil {
 		for {
@@ -47,18 +53,25 @@ func ModelsDir() string {
 	if p := os.Getenv("SUFLER_MODELS"); p != "" {
 		return p
 	}
-	dir, err := os.Getwd()
-	if err == nil {
+	var candidates []string
+	if dir, err := os.Getwd(); err == nil {
 		for {
-			p := filepath.Join(dir, "models")
-			if fi, err := os.Stat(p); err == nil && fi.IsDir() {
-				return p
-			}
+			candidates = append(candidates, dir)
 			parent := filepath.Dir(dir)
 			if parent == dir {
 				break
 			}
 			dir = parent
+		}
+	}
+	if exe, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		candidates = append(candidates, exeDir, filepath.Dir(exeDir))
+	}
+	for _, dir := range candidates {
+		p := filepath.Join(dir, "models")
+		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+			return p
 		}
 	}
 	return "models"

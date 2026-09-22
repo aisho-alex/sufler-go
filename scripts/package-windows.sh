@@ -5,37 +5,52 @@ set -e
 WS="$1"
 DIST="$WS/dist"
 LIB="$WS/lib"
+BIN="$DIST/bin"
 
 rm -rf "$DIST"
-mkdir -p "$DIST/bin" "$DIST/lib" "$DIST/models"
+mkdir -p "$BIN" "$DIST/models"
 
-cp "$WS/bin/sufler.exe" "$DIST/bin/"
-cp "$LIB/onnxruntime.dll" "$DIST/lib/"
+cp "$WS/bin/sufler.exe" "$BIN/"
 cp "$WS/models/silero_encoder_v5.onnx" "$WS/models/silero_decoder_v5.onnx" "$DIST/models/"
 cp -r "$WS/prompts" "$DIST/prompts"
-
 # config.yaml как в репе, но модель под CPU — small (первое вхождение "  model:")
 sed '0,/^  model: /s//  model: small              /' "$WS/config.yaml" > "$DIST/config.yaml"
 
-# Рекурсивно собираем mingw-DLL-зависимости через objdump.
+# onnxruntime + VC++ рантайм (его зависимости) — рядом с exe:
+# Windows ищет зависимости DLL в каталоге exe, поэтому всё кладём в bin/.
+cp "$LIB/onnxruntime.dll" "$BIN/"
+
+VS_CRT=$(ls -d "/c/Program Files/Microsoft Visual Studio/2022/"*/VC/Redist/MSVC/*/x64/Microsoft.VC143.CRT 2>/dev/null | tail -1 || true)
+copy_crt() {
+    local dll="$1"
+    for src in /c/Windows/System32 "$VS_CRT"; do
+        if [ -n "$src" ] && [ -f "$src/$dll" ]; then
+            cp "$src/$dll" "$BIN/"
+            return 0
+        fi
+    done
+    echo "ПРЕДУПРЕЖДЕНИЕ: не найден $dll"
+}
+for dll in MSVCP140.dll MSVCP140_1.dll MSVCP140_2.dll VCRUNTIME140.dll VCRUNTIME140_1.dll concrt140.dll; do
+    copy_crt "$dll"
+done
+
+# GTK и прочие mingw-DLL: рекурсивно от exe — тоже в bin/
 collect() {
     local dll="$1"
     local target="/mingw64/bin/$dll"
     [ -f "$target" ] || return 0
-    [ -f "$DIST/$dll" ] && return 0
-    cp "$target" "$DIST/"
+    [ -f "$BIN/$dll" ] && return 0
+    cp "$target" "$BIN/"
     for dep in $(objdump -p "$target" | grep 'DLL Name' | sed 's/.*DLL Name: \(.*\)/\1/' | tr -d '\r'); do
         collect "$dep"
     done
 }
-
-collect sufler.exe.dependencies_start
 for dep in $(objdump -p "$WS/bin/sufler.exe" | grep 'DLL Name' | sed 's/.*DLL Name: \(.*\)/\1/' | tr -d '\r'); do
     collect "$dep"
 done
-rm -f "$DIST/sufler.exe.dependencies_start"
 
-# Конфиги шрифтов и glib-схемы, иначе GTK ругается при старте.
+# Данные GTK: msys2-раскладка — DLL в bin/, share/etc рядом с bin/
 mkdir -p "$DIST/etc" "$DIST/share/glib-2.0"
 cp -r /mingw64/etc/fonts "$DIST/etc/fonts"
 cp -r /mingw64/share/glib-2.0/schemas "$DIST/share/glib-2.0/schemas"
@@ -47,24 +62,26 @@ cp -r /mingw64/share/themes/Windows10 "$DIST/share/themes/Windows10" 2>/dev/null
 cat > "$DIST/README-WINDOWS.txt" <<'EOF'
 sufler — ИИ-суфлёр (Windows, CPU)
 
-Запуск:
-  cd bin
-  sufler.exe            # оверлей (кнопка ▶ — старт захвата)
-  sufler.exe --no-ui    # консоль: текст — заметка, '?вопрос' — вопрос LLM
-  sufler.exe --list-devices
+Запуск (из корня пакета, где лежит этот файл):
+  bin\sufler.exe            # оверлей (кнопка ▶ — старт захвата)
+  bin\sufler.exe --no-ui    # консоль: текст — заметка, '?вопрос' — вопрос LLM
+  bin\sufler.exe --list-devices
+  bin\sufler.exe --check
 
 Первый шаг: скачайте модель whisper (по умолчанию small, ~466 МБ):
   bin\download-model.cmd
   (или: powershell -ExecutionPolicy Bypass -File bin\download-model.ps1)
 
-Ключ LLM: рядом с bin/ создайте .env:
+Ключ LLM: в корне пакета (рядом с config.yaml) создайте .env:
   NEURALDEEP_API_KEY=<ключ>
 
 Модель побольше (больше, но медленнее на CPU — правьте config.yaml asr.model):
   bin\download-model.cmd large-v3-turbo
+
+Данные (транскрипты, подсказки): data\sufler.db и data\sufler.log
 EOF
 
-cat > "$DIST/bin/download-model.cmd" <<'EOF'
+cat > "$BIN/download-model.cmd" <<'EOF'
 @echo off
 setlocal
 set MODEL=%~1
@@ -82,7 +99,7 @@ move /y "%DST%.part" "%DST%" >nul
 echo Done: %DST%
 EOF
 
-cat > "$DIST/bin/download-model.ps1" <<'EOF'
+cat > "$BIN/download-model.ps1" <<'EOF'
 # Запуск: powershell -ExecutionPolicy Bypass -File download-model.ps1
 param([string]$Model = "small")
 $ErrorActionPreference = "Stop"
