@@ -13,8 +13,8 @@ vad:
   pad_ms: 120
 
 asr:
-  model: large-v3-turbo     # tiny | base | small | medium | large-v3-turbo (~6 GB VRAM)
-  device: cuda
+  model: small     # tiny | base | small | medium | large-v3-turbo (~6 GB VRAM)
+  device: cpu
   compute_type: float16
   language: ru
   beam_size: 1

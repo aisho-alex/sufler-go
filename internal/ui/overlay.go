@@ -236,7 +236,7 @@ func escaped(s string) string {
 	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(s)
 }
 
-func (o *Overlay) onPress(ev *gdk.Event) bool {
+func (o *Overlay) onPress(_ *gtk.Window, ev *gdk.Event) bool {
 	bev := gdk.EventButtonNewFromEvent(ev)
 	if bev.Button() != 1 {
 		return false
@@ -248,7 +248,7 @@ func (o *Overlay) onPress(ev *gdk.Event) bool {
 	return true
 }
 
-func (o *Overlay) onMotion(ev *gdk.Event) bool {
+func (o *Overlay) onMotion(_ *gtk.Window, ev *gdk.Event) bool {
 	if !o.dragging {
 		return false
 	}

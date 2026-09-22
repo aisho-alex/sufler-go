@@ -350,9 +350,13 @@ func (s *AudioStream) checkDeviceChange() bool {
 	if !ok {
 		return false
 	}
+	saved := ws.DefaultDeviceID()
+	if saved == "" {
+		return false
+	}
 	cur, err := defaultEndpointID(s.Label)
 	if err != nil || cur == "" {
 		return false
 	}
-	return cur != ws.DefaultDeviceID()
+	return cur != saved
 }

@@ -84,7 +84,7 @@ func (s *AudioStream) sleep(d time.Duration) bool {
 
 func (s *AudioStream) supervise() {
 	defer close(s.done)
-	var checkTs time.Time
+	checkTs := time.Now()
 	for s.running {
 		if s.src == nil || !s.src.Alive() {
 			checkTs = time.Time{}
