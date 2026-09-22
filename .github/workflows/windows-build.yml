@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: read
+      issues: write
     defaults:
       run:
         shell: msys2 {0}
@@ -80,15 +83,17 @@ jobs:
           CGO_CFLAGS: -I${{ github.workspace }}/third_party/whisper.cpp/include -I${{ github.workspace }}/third_party/whisper.cpp/ggml/include
           CGO_LDFLAGS: -L${{ github.workspace }}/lib
         run: |
+          set -o pipefail
           go build -trimpath \
             -ldflags "-s -w -X main.version=$(git describe --tags --always --dirty)" \
-            -o bin/sufler.exe ./cmd/sufler
+            -o bin/sufler.exe ./cmd/sufler 2>&1 | tee go-build.log
 
       - name: Headless tests
         run: |
-          go test ./internal/analyzer/ ./internal/capture/ ./internal/vad/
+          set -o pipefail
+          { go test ./internal/analyzer/ ./internal/capture/ ./internal/vad/ ; } 2>&1 | tee tests.log
           ./bin/sufler.exe --version
-          ./bin/sufler.exe --check
+          ./bin/sufler.exe --check 2>&1 | tee -a tests.log
 
       - name: Package
         run: bash scripts/package-windows.sh "$GITHUB_WORKSPACE"
@@ -97,6 +102,36 @@ jobs:
         with:
           name: sufler-windows
           path: sufler-windows.zip
+
+      - name: Report failure logs to issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const files = ['go-build.log','tests.log'];
+            let parts = [];
+            for (const f of files) {
+              try {
+                const txt = fs.readFileSync(f, 'utf8');
+                parts.push('### ' + f + '\n```\n' + txt.slice(-8000) + '\n```');
+              } catch (e) { parts.push('### ' + f + '\nнет файла'); }
+            }
+            const body = parts.join('\n\n') || 'логов нет';
+            const title = 'CI failure log';
+            const all = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', per_page: 30 });
+            const existing = all.data.find(i => i.title === title && !i.pull_request);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body });
+            }
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
