@@ -137,6 +137,7 @@ func runUI(app *App) {
 	}
 	overlay.Toggle()
 
+	app.log("ui: запускаю главный цикл")
 	ctx, stop := signal.NotifyContext(context.Background(),
 		os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -147,8 +148,13 @@ func runUI(app *App) {
 			gtk.MainQuit()
 		})
 	}()
+	glib.TimeoutSecondsAdd(2, func() bool {
+		app.log("ui: alive")
+		return true
+	})
 
 	gtk.Main()
+	app.log("ui: главный цикл завершён")
 }
 
 type unit struct {
