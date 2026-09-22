@@ -54,18 +54,36 @@ sufler — ИИ-суфлёр (Windows, CPU)
   sufler.exe --list-devices
 
 Первый шаг: скачайте модель whisper (по умолчанию small, ~466 МБ):
-  powershell -File download-model.ps1
+  bin\download-model.cmd
+  (или: powershell -ExecutionPolicy Bypass -File bin\download-model.ps1)
 
 Ключ LLM: рядом с bin/ создайте .env:
   NEURALDEEP_API_KEY=<ключ>
 
-Модель побольше (large-v3-turbo, ~1.6 ГБ, медленнее на CPU):
-  powershell -File download-model.ps1 -Model large-v3-turbo
+Модель побольше (больше, но медленнее на CPU — правьте config.yaml asr.model):
+  bin\download-model.cmd large-v3-turbo
 EOF
 
-sed -i 's/Модель побольше (large-v3-turbo, ~1.6 ГБ, медленнее на CPU):/Модель побольше (больше, но медленнее на CPU — правьте config.yaml asr.model):/' "$DIST/README-WINDOWS.txt"
+cat > "$DIST/bin/download-model.cmd" <<'EOF'
+@echo off
+setlocal
+set MODEL=%~1
+if "%MODEL%"=="" set MODEL=small
+set URL=https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-%MODEL%.bin
+set DST=%~dp0..\models\ggml-%MODEL%.bin
+if not exist "%~dp0..\models" mkdir "%~dp0..\models"
+echo Downloading %URL%
+curl.exe -L -C - -o "%DST%.part" "%URL%"
+if errorlevel 1 (
+  echo Download failed. Check curl.exe availability and network.
+  exit /b 1
+)
+move /y "%DST%.part" "%DST%" >nul
+echo Done: %DST%
+EOF
 
 cat > "$DIST/bin/download-model.ps1" <<'EOF'
+# Запуск: powershell -ExecutionPolicy Bypass -File download-model.ps1
 param([string]$Model = "small")
 $ErrorActionPreference = "Stop"
 $url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-$Model.bin"

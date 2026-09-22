@@ -87,7 +87,8 @@ whisper.cpp CPU static + GTK3 + onnxruntime, упаковывается в
 ```text
 1. Скачать sufler-windows.zip из Actions (или из Releases)
 2. Распаковать; в bin\ создайте .env:  NEURALDEEP_API_KEY=<ключ>
-3. powershell -File bin\download-model.ps1        # ggml-small.bin (~466 МБ)
+3. bin\download-model.cmd                          # ggml-small.bin (~466 МБ)
+   # или: powershell -ExecutionPolicy Bypass -File bin\download-model.ps1
 4. bin\sufler.exe                                  # оверлей (▶ — старт)
    bin\sufler.exe --no-ui --list-devices           # консоль/устройства
 ```
