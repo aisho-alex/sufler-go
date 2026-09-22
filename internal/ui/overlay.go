@@ -204,6 +204,7 @@ func NewOverlay(cfg *config.Config, onToggle func(bool), onQuit func(),
 			o.onToggle(false)
 		}
 		o.onQuit()
+		gtk.MainQuit()
 	})
 	win.Connect("delete-event", func() bool {
 		o.quit()
@@ -326,6 +327,7 @@ func (o *Overlay) quit() {
 		o.running = false
 	}
 	o.onQuit()
+	gtk.MainQuit()
 }
 
 func (o *Overlay) ask() {

@@ -136,6 +136,18 @@ func runUI(app *App) {
 		fatal(err)
 	}
 	overlay.Toggle()
+
+	ctx, stop := signal.NotifyContext(context.Background(),
+		os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		glib.IdleAdd(func() {
+			app.shutdown()
+			gtk.MainQuit()
+		})
+	}()
+
 	gtk.Main()
 }
 
