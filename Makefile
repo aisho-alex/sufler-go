@@ -17,6 +17,7 @@ test:
 	go test ./... -count=1
 
 whisper-build:
+	mkdir -p lib
 	cmake -S $(WHISPER_DIR) -B $(WHISPER_DIR)/build \
 		-DGGML_CUDA=1 -DBUILD_SHARED_LIBS=OFF \
 		-DCMAKE_CUDA_ARCHITECTURES=89 -DGGML_NATIVE=ON \
