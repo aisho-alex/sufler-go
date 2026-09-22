@@ -105,6 +105,8 @@ whisper.cpp CPU static + GTK3 + onnxruntime, упаковывается в
 - Требуется CPU с AVX2/FMA/F16C (Intel Haswell 2013+ / AMD Excavator+).
 - GTK3-рантайм и onnxruntime.dll идут в комплекте (папки `lib/`, `share/`,
   `etc/`); интернет нужен только для модели и LLM.
+- Проверено на Windows 10 (VirtualBox, 8 vCPU): WASAPI-захват (микрофон +
+  loopback системного звука), оверлей, распознавание и LLM-подсказки.
 
 ## Отличия от Python-версии
 
