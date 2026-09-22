@@ -41,11 +41,13 @@ jobs:
             -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=OFF \
             -DCMAKE_BUILD_TYPE=Release
           cmake --build third_party/whisper.cpp/build
+          echo "=== расположение архивов ==="
+          find third_party/whisper.cpp/build -name '*.a' -o -name '*.lib' | sort
           mkdir -p lib
-          cp third_party/whisper.cpp/build/src/libwhisper.a lib/
-          cp third_party/whisper.cpp/build/ggml/src/libggml.a lib/
-          cp third_party/whisper.cpp/build/ggml/src/libggml-base.a lib/
-          cp third_party/whisper.cpp/build/ggml/src/libggml-cpu.a lib/
+          for a in src/libwhisper.a ggml/src/libggml.a ggml/src/libggml-base.a ggml/src/libggml-cpu.a; do
+            cp -v "third_party/whisper.cpp/build/$a" lib/ || echo "НЕ НАЙДЕН: $a"
+          done
+          test -f lib/libwhisper.a && test -f lib/libggml.a && test -f lib/libggml-base.a && test -f lib/libggml-cpu.a
 
       - name: Merge static libs + CUDA stubs (cgo LDFLAGS требует имена)
         run: |
