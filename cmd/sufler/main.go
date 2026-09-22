@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -34,6 +35,8 @@ func strAny(v any) string {
 var version = "dev"
 
 func main() {
+	runtime.LockOSThread()
+
 	cfgPath := flag.String("config", "", "путь к config.yaml")
 	noUI := flag.Bool("no-ui", false, "консольный режим вместо оверлея")
 	noMic := flag.Bool("no-mic", false, "без микрофона")
@@ -149,13 +152,8 @@ func runUI(app *App) {
 			gtk.MainQuit()
 		})
 	}()
-	glib.TimeoutSecondsAdd(2, func() bool {
-		app.log("ui: alive")
-		return true
-	})
 
 	gtk.Main()
-	app.log("ui: главный цикл завершён")
 }
 
 type unit struct {
