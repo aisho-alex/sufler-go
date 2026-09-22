@@ -14,7 +14,9 @@ cp "$WS/bin/sufler.exe" "$BIN/"
 cp "$WS/models/silero_encoder_v5.onnx" "$WS/models/silero_decoder_v5.onnx" "$DIST/models/"
 cp -r "$WS/prompts" "$DIST/prompts"
 # config.yaml как в репе, но модель под CPU — small (первое вхождение "  model:")
-sed '0,/^  model: /s//  model: small              /' "$WS/config.yaml" > "$DIST/config.yaml"
+sed -e '0,/^  model: /s/^  model: .*/  model: small              # tiny | base | small | medium | large-v3-turbo/' \
+    -e '0,/^  device: /s/^  device: .*/  device: cpu/' \
+    "$WS/config.yaml" > "$DIST/config.yaml"
 
 # onnxruntime + VC++ рантайм (его зависимости) — рядом с exe:
 # Windows ищет зависимости DLL в каталоге exe, поэтому всё кладём в bin/.
