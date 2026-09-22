@@ -90,6 +90,7 @@ type Overlay struct {
 
 	running, pill bool
 	hints         []hintItem
+	Log           func(string)
 }
 
 func envOn(name string) bool {
@@ -253,25 +254,36 @@ func escaped(s string) string {
 // состояния устройства-указателя, а не из события: обёртки
 // gdk.EventButtonNewFromEvent на Windows вызывали зависание UI.
 func (o *Overlay) onDragStart(_ *gtk.Window, _ *gdk.Event) bool {
-	display, err := gdk.DisplayGetDefault()
-	if err != nil {
-		return false
+	x, y, ok := o.pointerXY()
+	if o.Log != nil {
+		o.Log(fmt.Sprintf("ui: drag %d,%d", x, y))
 	}
-	seat, err := display.GetDefaultSeat()
-	if err != nil {
-		return false
-	}
-	dev, err := seat.GetPointer()
-	if err != nil {
-		return false
-	}
-	var screen *gdk.Screen
-	var x, y int
-	if err := dev.GetPosition(&screen, &x, &y); err != nil {
+	if !ok || envOn("SUFLER_NO_DRAG") {
 		return false
 	}
 	o.win.BeginMoveDrag(gdk.BUTTON_PRIMARY, x, y, 0)
 	return true
+}
+
+func (o *Overlay) pointerXY() (int, int, bool) {
+	display, err := gdk.DisplayGetDefault()
+	if err != nil {
+		return 0, 0, false
+	}
+	seat, err := display.GetDefaultSeat()
+	if err != nil {
+		return 0, 0, false
+	}
+	dev, err := seat.GetPointer()
+	if err != nil {
+		return 0, 0, false
+	}
+	var screen *gdk.Screen
+	var x, y int
+	if err := dev.GetPosition(&screen, &x, &y); err != nil {
+		return 0, 0, false
+	}
+	return x, y, true
 }
 
 func (o *Overlay) reposition() {

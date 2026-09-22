@@ -85,7 +85,7 @@ jobs:
         run: |
           set -o pipefail
           go build -trimpath \
-            -ldflags "-s -w -X main.version=$(git describe --tags --always --dirty)" \
+            -ldflags "-H=windowsgui -s -w -X main.version=$(git describe --tags --always --dirty)" \
             -o bin/sufler.exe ./cmd/sufler 2>&1 | tee go-build.log
 
       - name: Headless tests

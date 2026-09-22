@@ -103,6 +103,7 @@ func runUI(app *App) {
 		app.shutdown()
 		fatal(fmt.Errorf("ui: %w", err))
 	}
+	overlay.Log = app.logFn
 
 	app.bus.Subscribe(func(e bus.Event) {
 		glib.IdleAdd(func() {

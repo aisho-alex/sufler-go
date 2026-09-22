@@ -61,10 +61,17 @@ cp -r /mingw64/lib/gdk-pixbuf-2.0/2.10.0/loaders "$DIST/lib/gdk-pixbuf-2.0/2.10.
 cp -r /mingw64/share/icons/Adwaita "$DIST/share/icons/Adwaita" 2>/dev/null || true
 cp -r /mingw64/share/themes/Windows10 "$DIST/share/themes/Windows10" 2>/dev/null || true
 
+cat > "$DIST/sufler.cmd" <<'EOF'
+@echo off
+cd /d "%~dp0"
+start "" "bin\sufler.exe"
+EOF
+
 cat > "$DIST/README-WINDOWS.txt" <<'EOF'
 sufler — ИИ-суфлёр (Windows, CPU)
 
 Запуск (из корня пакета, где лежит этот файл):
+  sufler.cmd                # оверлей без консоли (рекомендуется)
   bin\sufler.exe            # оверлей (кнопка ▶ — старт захвата)
   bin\sufler.exe --no-ui    # консоль: текст — заметка, '?вопрос' — вопрос LLM
   bin\sufler.exe --list-devices

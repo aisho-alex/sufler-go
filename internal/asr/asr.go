@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	whisper "github.com/ggerganov/whisper.cpp/bindings/go/pkg/whisper"
@@ -31,14 +32,15 @@ type ASR struct {
 	OnResult func(Result)
 	Log      func(string)
 
-	model   whisper.Model
-	ctx     whisper.Context
-	q       chan job
-	stop    chan struct{}
-	done    chan struct{}
-	once    sync.Once
-	mu      sync.Mutex
-	started bool
+	model    whisper.Model
+	ctx      whisper.Context
+	q        chan job
+	stop     chan struct{}
+	done     chan struct{}
+	once     sync.Once
+	mu       sync.Mutex
+	started  bool
+	stopping atomic.Bool
 }
 
 type job struct {
@@ -148,8 +150,12 @@ func (a *ASR) process(j job) {
 	}()
 	t0 := time.Now()
 	var text string
-	err := a.ctx.Process(j.seg, nil, nil, nil)
+	abort := func() bool { return a.stopping.Load() }
+	err := a.ctx.Process(j.seg, abort, nil, nil)
 	if err != nil {
+		if a.stopping.Load() {
+			return
+		}
 		a.logf("ошибка распознавания: %v", err)
 		return
 	}
@@ -182,10 +188,13 @@ func (a *ASR) process(j job) {
 }
 
 func (a *ASR) Stop() {
-	a.once.Do(func() { close(a.stop) })
+	a.once.Do(func() {
+		a.stopping.Store(true)
+		close(a.stop)
+	})
 	select {
 	case <-a.done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(30 * time.Second):
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
