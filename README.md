@@ -89,8 +89,12 @@ whisper.cpp CPU static + GTK3 + onnxruntime, упаковывается в
 2. Распаковать; в bin\ создайте .env:  NEURALDEEP_API_KEY=<ключ>
 3. bin\download-model.cmd                          # ggml-small.bin (~466 МБ)
    # или: powershell -ExecutionPolicy Bypass -File bin\download-model.ps1
-4. bin\sufler.exe                                  # оверлей (▶ — старт)
-   bin\sufler.exe --no-ui --list-devices           # консоль/устройства
+4. sufler.cmd                                      # оверлей без консоли (рекомендуется)
+   bin\sufler.exe                                  # то же самое напрямую
+   bin\sufler.exe --no-ui --list-devices           # консольный режим/устройства
+
+Логи и данные — в data\sufler.log и data\sufler.db (в оконном режиме
+консоли нет; все сообщения идут в файл).
 ```
 
 - Захват — WASAPI: микрофон с дефолтного capture-устройства, системный звук —
